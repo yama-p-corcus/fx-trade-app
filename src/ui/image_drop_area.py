@@ -4,11 +4,13 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 
 class ImageDropArea(QWidget):
     image_changed = pyqtSignal(str)
+    PREVIEW_WIDTH = 320
+    PREVIEW_HEIGHT = 170
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -23,7 +25,8 @@ class ImageDropArea(QWidget):
         self.preview_label = QLabel("画像をここへドラッグ＆ドロップ")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setWordWrap(True)
-        self.preview_label.setMinimumHeight(180)
+        self.preview_label.setFixedSize(self.PREVIEW_WIDTH, self.PREVIEW_HEIGHT)
+        self.preview_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.preview_label.setStyleSheet(
             "border: 2px dashed #b8d3c0; border-radius: 12px; background: #f8fcf9; color: #567064;"
         )
@@ -32,8 +35,8 @@ class ImageDropArea(QWidget):
         self.help_label.setProperty("role", "subtitle")
         self.help_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        layout.addWidget(self.preview_label)
-        layout.addWidget(self.help_label)
+        layout.addWidget(self.preview_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.help_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         if self._extract_image_path(event):
