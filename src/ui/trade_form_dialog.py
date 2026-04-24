@@ -16,10 +16,12 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QTextEdit,
     QTimeEdit,
     QVBoxLayout,
+    QWidget,
 )
 
 from src.models.trade import Trade
@@ -49,12 +51,23 @@ class TradeFormDialog(QDialog):
         self.field_errors: dict[str, QLabel] = {}
         self.timeframe_blocks: dict[str, TimeframeAnalysisBlock] = {}
         self.setWindowTitle("トレード編集" if trade else "トレード新規登録")
-        self.setMinimumSize(1120, 900)
-        self.resize(1180, 920)
+        self.setMinimumSize(1080, 820)
+        self.resize(1120, 860)
 
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(18, 18, 18, 18)
-        root_layout.setSpacing(14)
+        root_layout.setSpacing(0)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+
+        self.container = QWidget()
+        self.container.setMinimumWidth(1000)
+        container_layout = QVBoxLayout(self.container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(14)
+        self.scroll_area.setWidget(self.container)
 
         basic_card = QFrame()
         basic_card.setObjectName("card")
@@ -75,13 +88,6 @@ class TradeFormDialog(QDialog):
         basic_layout.addRow("時間", self.time_edit)
         basic_layout.addRow("通貨ペア", self.currency_pair_edit)
         basic_layout.addRow("", self.currency_pair_error)
-
-        analysis_title = QLabel("時間足分析")
-        analysis_title.setProperty("role", "title")
-
-        analysis_grid = QGridLayout()
-        analysis_grid.setHorizontalSpacing(14)
-        analysis_grid.setVerticalSpacing(14)
 
         result_card = QFrame()
         result_card.setObjectName("card")
@@ -163,27 +169,69 @@ class TradeFormDialog(QDialog):
             grid.addWidget(field_error_widgets[index], row + 3, column + 1)
 
         result_layout.addLayout(grid)
-        result_layout.addWidget(QLabel("エントリーメモ"))
-        result_layout.addWidget(self.entry_memo_edit)
-        result_layout.addWidget(QLabel("決済メモ"))
-        result_layout.addWidget(self.exit_memo_edit)
+
+        analysis_card = QFrame()
+        analysis_card.setObjectName("card")
+        analysis_layout = QVBoxLayout(analysis_card)
+        analysis_layout.setContentsMargins(18, 18, 18, 18)
+        analysis_layout.setSpacing(14)
+
+        analysis_title = QLabel("時間足分析")
+        analysis_title.setProperty("role", "subtitle")
+
+        analysis_grid = QGridLayout()
+        analysis_grid.setHorizontalSpacing(14)
+        analysis_grid.setVerticalSpacing(14)
+        analysis_grid.setContentsMargins(0, 0, 0, 0)
+
+        analysis_layout.addWidget(analysis_title)
+        analysis_layout.addLayout(analysis_grid)
+
+        entry_memo_card = QFrame()
+        entry_memo_card.setObjectName("card")
+        entry_memo_layout = QVBoxLayout(entry_memo_card)
+        entry_memo_layout.setContentsMargins(18, 18, 18, 18)
+        entry_memo_layout.setSpacing(10)
+        entry_memo_title = QLabel("エントリーメモ")
+        entry_memo_title.setProperty("role", "subtitle")
+        self.entry_memo_edit.setFixedHeight(120)
+        entry_memo_layout.addWidget(entry_memo_title)
+        entry_memo_layout.addWidget(self.entry_memo_edit)
+
+        exit_memo_card = QFrame()
+        exit_memo_card.setObjectName("card")
+        exit_memo_layout = QVBoxLayout(exit_memo_card)
+        exit_memo_layout.setContentsMargins(18, 18, 18, 18)
+        exit_memo_layout.setSpacing(10)
+        exit_memo_title = QLabel("決済メモ")
+        exit_memo_title.setProperty("role", "subtitle")
+        self.exit_memo_edit.setFixedHeight(120)
+        exit_memo_layout.addWidget(exit_memo_title)
+        exit_memo_layout.addWidget(self.exit_memo_edit)
 
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         self.button_box.accepted.connect(self._validate_before_accept)
         self.button_box.rejected.connect(self.reject)
+        button_card = QFrame()
+        button_card.setObjectName("card")
+        button_layout = QVBoxLayout(button_card)
+        button_layout.setContentsMargins(18, 18, 18, 18)
+        button_layout.addWidget(self.button_box)
 
-        root_layout.addWidget(basic_card)
-        root_layout.addWidget(analysis_title)
+        container_layout.addWidget(basic_card)
+        container_layout.addWidget(result_card)
         for index, (timeframe_key, timeframe_title) in enumerate(self.TIMEFRAME_CONFIG):
             block = self._create_timeframe_block(timeframe_title, timeframe_key)
             self.timeframe_blocks[timeframe_key] = block
             row = index // 2
             column = index % 2
             analysis_grid.addWidget(block, row, column)
-        root_layout.addLayout(analysis_grid)
-        root_layout.addWidget(result_card)
-        root_layout.addStretch()
-        root_layout.addWidget(self.button_box)
+        container_layout.addWidget(analysis_card)
+        container_layout.addWidget(entry_memo_card)
+        container_layout.addWidget(exit_memo_card)
+        container_layout.addWidget(button_card)
+
+        root_layout.addWidget(self.scroll_area)
 
         self.field_errors = {
             "currency_pair": self.currency_pair_error,

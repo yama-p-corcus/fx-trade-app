@@ -65,12 +65,14 @@ class ImageDropArea(QWidget):
         if not self._image_path or not Path(self._image_path).exists():
             self.preview_label.setPixmap(QPixmap())
             self.preview_label.setText("画像をここへドラッグ＆ドロップ")
+            self.help_label.setVisible(True)
             return
 
         pixmap = QPixmap(self._image_path)
         if pixmap.isNull():
             self.preview_label.setPixmap(QPixmap())
             self.preview_label.setText("画像を読み込めませんでした")
+            self.help_label.setVisible(True)
             return
 
         scaled = pixmap.scaled(
@@ -80,6 +82,7 @@ class ImageDropArea(QWidget):
         )
         self.preview_label.setText("")
         self.preview_label.setPixmap(scaled)
+        self.help_label.setVisible(False)
 
     @staticmethod
     def _extract_image_path(event) -> str:
