@@ -25,6 +25,7 @@ class MainWindow(QMainWindow):
 
         self.controller = TradeController(db_path=db_path, images_dir=images_dir)
         self.selected_date = ""
+        self.last_currency_pair = ""
 
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
@@ -74,30 +75,34 @@ class MainWindow(QMainWindow):
         self.calendar_page.apply_trade_highlights(summary)
 
     def open_create_dialog(self, default_date: str) -> None:
-        dialog = TradeFormDialog(self, default_date=default_date)
+        dialog = TradeFormDialog(
+            self,
+            default_date=default_date,
+            last_currency_pair=self.last_currency_pair,
+            validate_callback=self.controller.validate_trade_payload,
+        )
         if dialog.exec():
-            try:
-                self.controller.create_trade(dialog.get_payload())
-            except ValueError as exc:
-                QMessageBox.warning(self, "入力エラー", str(exc))
-                return
-            self._after_trade_changed(dialog.get_payload()["trade_date"])
+            payload = dialog.get_payload()
+            self.controller.create_trade(payload)
+            self.last_currency_pair = payload["currency_pair"]
+            self._after_trade_changed(payload["trade_date"])
 
     def open_edit_dialog(self, trade_id: int) -> None:
         trade = self.controller.get_trade(trade_id)
         if not trade:
-            QMessageBox.warning(self, "エラー", "対象のトレードが見つかりません。")
             return
 
         previous_date = trade.trade_date
-        dialog = TradeFormDialog(self, trade=trade)
+        dialog = TradeFormDialog(
+            self,
+            trade=trade,
+            last_currency_pair=self.last_currency_pair,
+            validate_callback=self.controller.validate_trade_payload,
+        )
         if dialog.exec():
-            try:
-                payload = dialog.get_payload()
-                self.controller.update_trade(trade_id, payload)
-            except ValueError as exc:
-                QMessageBox.warning(self, "入力エラー", str(exc))
-                return
+            payload = dialog.get_payload()
+            self.controller.update_trade(trade_id, payload)
+            self.last_currency_pair = payload["currency_pair"]
             self._after_trade_changed(payload["trade_date"], previous_date=previous_date)
 
     def delete_trade(self, trade_id: int) -> None:

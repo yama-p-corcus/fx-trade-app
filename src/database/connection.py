@@ -27,11 +27,41 @@ def initialize_database(db_path: Path) -> None:
                 profit INTEGER NOT NULL,
                 entry_memo TEXT NOT NULL DEFAULT '',
                 exit_memo TEXT NOT NULL DEFAULT '',
+                image_path TEXT NOT NULL DEFAULT '',
+                m15_image_path TEXT NOT NULL DEFAULT '',
+                h1_image_path TEXT NOT NULL DEFAULT '',
+                h4_image_path TEXT NOT NULL DEFAULT '',
+                d1_image_path TEXT NOT NULL DEFAULT '',
+                m15_comment TEXT NOT NULL DEFAULT '',
+                h1_comment TEXT NOT NULL DEFAULT '',
+                h4_comment TEXT NOT NULL DEFAULT '',
+                d1_comment TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
+
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(trades)").fetchall()
+        }
+        required_columns = {
+            "image_path": "TEXT NOT NULL DEFAULT ''",
+            "m15_image_path": "TEXT NOT NULL DEFAULT ''",
+            "h1_image_path": "TEXT NOT NULL DEFAULT ''",
+            "h4_image_path": "TEXT NOT NULL DEFAULT ''",
+            "d1_image_path": "TEXT NOT NULL DEFAULT ''",
+            "m15_comment": "TEXT NOT NULL DEFAULT ''",
+            "h1_comment": "TEXT NOT NULL DEFAULT ''",
+            "h4_comment": "TEXT NOT NULL DEFAULT ''",
+            "d1_comment": "TEXT NOT NULL DEFAULT ''",
+        }
+        for column_name, column_definition in required_columns.items():
+            if column_name not in columns:
+                connection.execute(
+                    f"ALTER TABLE trades ADD COLUMN {column_name} {column_definition}"
+                )
 
         connection.execute(
             """

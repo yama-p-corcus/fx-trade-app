@@ -36,7 +36,16 @@ class TradeRepository:
                 trade_type,
                 profit,
                 entry_memo,
-                exit_memo
+                exit_memo,
+                image_path,
+                m15_image_path,
+                h1_image_path,
+                h4_image_path,
+                d1_image_path,
+                m15_comment,
+                h1_comment,
+                h4_comment,
+                d1_comment
             FROM trades
             WHERE trade_date = ?
             ORDER BY trade_time DESC, id DESC
@@ -59,7 +68,16 @@ class TradeRepository:
                 trade_type,
                 profit,
                 entry_memo,
-                exit_memo
+                exit_memo,
+                image_path,
+                m15_image_path,
+                h1_image_path,
+                h4_image_path,
+                d1_image_path,
+                m15_comment,
+                h1_comment,
+                h4_comment,
+                d1_comment
             FROM trades
             WHERE id = ?
         """
@@ -80,9 +98,18 @@ class TradeRepository:
                 trade_type,
                 profit,
                 entry_memo,
-                exit_memo
+                exit_memo,
+                image_path,
+                m15_image_path,
+                h1_image_path,
+                h4_image_path,
+                d1_image_path,
+                m15_comment,
+                h1_comment,
+                h4_comment,
+                d1_comment
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         values = (
             trade.trade_date,
@@ -96,6 +123,15 @@ class TradeRepository:
             trade.profit,
             trade.entry_memo,
             trade.exit_memo,
+            trade.image_path,
+            trade.m15_image_path,
+            trade.h1_image_path,
+            trade.h4_image_path,
+            trade.d1_image_path,
+            trade.m15_comment,
+            trade.h1_comment,
+            trade.h4_comment,
+            trade.d1_comment,
         )
         with get_connection(self.db_path) as connection:
             cursor = connection.execute(query, values)
@@ -116,7 +152,16 @@ class TradeRepository:
                 trade_type = ?,
                 profit = ?,
                 entry_memo = ?,
-                exit_memo = ?
+                exit_memo = ?,
+                image_path = ?,
+                m15_image_path = ?,
+                h1_image_path = ?,
+                h4_image_path = ?,
+                d1_image_path = ?,
+                m15_comment = ?,
+                h1_comment = ?,
+                h4_comment = ?,
+                d1_comment = ?
             WHERE id = ?
         """
         values = (
@@ -131,10 +176,46 @@ class TradeRepository:
             trade.profit,
             trade.entry_memo,
             trade.exit_memo,
+            trade.image_path,
+            trade.m15_image_path,
+            trade.h1_image_path,
+            trade.h4_image_path,
+            trade.d1_image_path,
+            trade.m15_comment,
+            trade.h1_comment,
+            trade.h4_comment,
+            trade.d1_comment,
             trade.id,
         )
         with get_connection(self.db_path) as connection:
             connection.execute(query, values)
+            connection.commit()
+
+    def update_image_path(self, trade_id: int, image_path: str) -> None:
+        with get_connection(self.db_path) as connection:
+            connection.execute("UPDATE trades SET image_path = ? WHERE id = ?", (image_path, trade_id))
+            connection.commit()
+
+    def update_analysis_image_paths(self, trade_id: int, image_paths: dict[str, str]) -> None:
+        with get_connection(self.db_path) as connection:
+            connection.execute(
+                """
+                UPDATE trades
+                SET
+                    m15_image_path = ?,
+                    h1_image_path = ?,
+                    h4_image_path = ?,
+                    d1_image_path = ?
+                WHERE id = ?
+                """,
+                (
+                    image_paths.get("m15", ""),
+                    image_paths.get("h1", ""),
+                    image_paths.get("h4", ""),
+                    image_paths.get("d1", ""),
+                    trade_id,
+                ),
+            )
             connection.commit()
 
     def delete(self, trade_id: int) -> None:
@@ -157,4 +238,13 @@ class TradeRepository:
             profit=int(row["profit"]),
             entry_memo=row["entry_memo"] or "",
             exit_memo=row["exit_memo"] or "",
+            image_path=row["image_path"] or "",
+            m15_image_path=row["m15_image_path"] or "",
+            h1_image_path=row["h1_image_path"] or "",
+            h4_image_path=row["h4_image_path"] or "",
+            d1_image_path=row["d1_image_path"] or "",
+            m15_comment=row["m15_comment"] or "",
+            h1_comment=row["h1_comment"] or "",
+            h4_comment=row["h4_comment"] or "",
+            d1_comment=row["d1_comment"] or "",
         )

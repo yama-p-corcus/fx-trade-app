@@ -44,6 +44,18 @@ QPushButton[variant="danger"] {
     background-color: #cf5f5f;
 }
 
+QPushButton[variant="toggle"] {
+    background-color: #e8f2eb;
+    color: #2d5f41;
+    border: 1px solid #b8d3c0;
+}
+
+QPushButton[variant="toggle"][checked="true"] {
+    background-color: #3f8f63;
+    color: white;
+    border: 1px solid #3f8f63;
+}
+
 QLineEdit, QTextEdit, QDateEdit, QTimeEdit, QDoubleSpinBox, QSpinBox, QComboBox, QTableWidget, QCalendarWidget {
     background: white;
     border: 1px solid #cddfcf;
@@ -74,5 +86,11 @@ QLabel[role="title"] {
 
 QLabel[role="subtitle"] {
     color: #597261;
+}
+
+QLabel[role="error"] {
+    color: #c62828;
+    font-size: 12px;
+    padding-top: 2px;
 }
 """

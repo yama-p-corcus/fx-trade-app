@@ -3,11 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from PyQt6.QtGui import QImage
+
 from src.models.trade import Trade
 from src.repositories.trade_repository import TradeRepository
 
 
 class TradeService:
+    TIMEFRAMES = ("m15", "h1", "h4", "d1")
+
     def __init__(self, db_path: Path, images_dir: Path) -> None:
         self.repository = TradeRepository(db_path)
         self.images_dir = images_dir
@@ -23,14 +27,32 @@ class TradeService:
 
     def create_trade(self, payload: dict[str, Any]) -> int:
         trade = self._validate_and_build(payload)
-        return self.repository.insert(trade)
+        trade_id = self.repository.insert(trade)
+        image_path = self._persist_trade_image(trade_id, payload.get("image_source_path"))
+        if image_path:
+            self.repository.update_image_path(trade_id, image_path)
+        self.repository.update_analysis_image_paths(
+            trade_id,
+            self._persist_timeframe_images(trade_id, payload, trade),
+        )
+        return trade_id
 
     def update_trade(self, trade_id: int, payload: dict[str, Any]) -> None:
         trade = self._validate_and_build(payload, trade_id=trade_id)
         self.repository.update(trade)
+        image_path = self._persist_trade_image(trade_id, payload.get("image_source_path"))
+        if image_path:
+            self.repository.update_image_path(trade_id, image_path)
+        self.repository.update_analysis_image_paths(
+            trade_id,
+            self._persist_timeframe_images(trade_id, payload, trade),
+        )
 
     def delete_trade(self, trade_id: int) -> None:
         self.repository.delete(trade_id)
+
+    def validate_trade_payload(self, payload: dict[str, Any]) -> None:
+        self._validate_and_build(payload)
 
     def _validate_and_build(self, payload: dict[str, Any], trade_id: int | None = None) -> Trade:
         trade_date = str(payload["trade_date"]).strip()
@@ -78,4 +100,74 @@ class TradeService:
             profit=profit,
             entry_memo=entry_memo,
             exit_memo=exit_memo,
+            image_path=str(payload.get("image_path", "")).strip(),
+            m15_image_path=str(payload.get("m15_image_path", "")).strip(),
+            h1_image_path=str(payload.get("h1_image_path", "")).strip(),
+            h4_image_path=str(payload.get("h4_image_path", "")).strip(),
+            d1_image_path=str(payload.get("d1_image_path", "")).strip(),
+            m15_comment=str(payload.get("m15_comment", "")).strip(),
+            h1_comment=str(payload.get("h1_comment", "")).strip(),
+            h4_comment=str(payload.get("h4_comment", "")).strip(),
+            d1_comment=str(payload.get("d1_comment", "")).strip(),
         )
+
+    def _persist_trade_image(self, trade_id: int, source_path: Any) -> str:
+        if not source_path:
+            return ""
+
+        source = Path(str(source_path))
+        if not source.exists():
+            return ""
+
+        target_dir = self.images_dir / str(trade_id)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / "chart.png"
+        if source.resolve() == target_path.resolve():
+            return str(target_path)
+
+        image = QImage(str(source))
+        if image.isNull():
+            return ""
+        image.save(str(target_path), "PNG")
+        return str(target_path)
+
+    def _persist_timeframe_images(
+        self,
+        trade_id: int,
+        payload: dict[str, Any],
+        trade: Trade,
+    ) -> dict[str, str]:
+        image_paths = {
+            "m15": trade.m15_image_path,
+            "h1": trade.h1_image_path,
+            "h4": trade.h4_image_path,
+            "d1": trade.d1_image_path,
+        }
+        target_dir = self.images_dir / str(trade_id)
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        for timeframe in self.TIMEFRAMES:
+            source_path = payload.get(f"{timeframe}_image_source_path")
+            if not source_path:
+                continue
+            saved_path = self._save_png_image(
+                source_path=source_path,
+                target_path=target_dir / f"{timeframe}.png",
+            )
+            if saved_path:
+                image_paths[timeframe] = saved_path
+        return image_paths
+
+    @staticmethod
+    def _save_png_image(source_path: Any, target_path: Path) -> str:
+        source = Path(str(source_path))
+        if not source.exists():
+            return ""
+        if source.resolve() == target_path.resolve():
+            return str(target_path)
+
+        image = QImage(str(source))
+        if image.isNull():
+            return ""
+        image.save(str(target_path), "PNG")
+        return str(target_path)

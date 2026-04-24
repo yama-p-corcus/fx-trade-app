@@ -24,6 +24,9 @@ class TradeController:
     def create_trade(self, payload: dict[str, Any]) -> int:
         return self.service.create_trade(payload)
 
+    def validate_trade_payload(self, payload: dict[str, Any]) -> None:
+        self.service.validate_trade_payload(payload)
+
     def update_trade(self, trade_id: int, payload: dict[str, Any]) -> None:
         self.service.update_trade(trade_id, payload)
 

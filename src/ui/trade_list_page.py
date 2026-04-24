@@ -4,11 +4,13 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QAbstractScrollArea,
     QFrame,
     QHeaderView,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -70,8 +72,10 @@ class TradeListPage(QWidget):
 
         card = QFrame()
         card.setObjectName("card")
+        card.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(16, 16, 16, 16)
+        card_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
         self.table = QTableWidget(0, 8)
         self.table.setHorizontalHeaderLabels(["ID", "時間", "通貨ペア", "売買", "pips", "損益", "注文価格", "決済価格"])
@@ -81,15 +85,18 @@ class TradeListPage(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.itemDoubleClicked.connect(self._emit_edit)
         self.table.setAlternatingRowColors(True)
+        self.table.setSizeAdjustPolicy(QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents)
+        self.table.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Expanding)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setStretchLastSection(False)
 
-        card_layout.addWidget(self.table)
+        card_layout.addWidget(self.table, alignment=Qt.AlignmentFlag.AlignLeft)
 
         layout.addLayout(top_bar)
         layout.addLayout(action_bar)
-        layout.addWidget(card)
+        layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignLeft)
+        layout.addStretch()
 
         self._set_action_enabled(False)
 
@@ -122,6 +129,8 @@ class TradeListPage(QWidget):
                 self.table.setItem(row, column, item)
 
         self.table.resizeColumnsToContents()
+        self.table.resizeRowsToContents()
+        self._update_table_width(card_width_padding=32)
         self._set_action_enabled(bool(trades))
         if trades:
             self.table.selectRow(0)
@@ -154,3 +163,16 @@ class TradeListPage(QWidget):
     @staticmethod
     def _format_decimal(value: float, digits: int) -> str:
         return f"{value:,.{digits}f}"
+
+    def _update_table_width(self, card_width_padding: int = 0) -> None:
+        header = self.table.horizontalHeader()
+        width = header.length()
+        width += self.table.verticalHeader().width()
+        width += self.table.frameWidth() * 2
+        if self.table.verticalScrollBar().isVisible():
+            width += self.table.verticalScrollBar().sizeHint().width()
+        self.table.setMaximumWidth(width + 4)
+        self.table.setMinimumWidth(width + 4)
+        parent_card = self.table.parentWidget()
+        if parent_card is not None:
+            parent_card.setMaximumWidth(width + card_width_padding)

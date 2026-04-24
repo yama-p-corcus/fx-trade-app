@@ -17,3 +17,12 @@ class Trade:
     profit: int
     entry_memo: str
     exit_memo: str
+    image_path: str
+    m15_image_path: str
+    h1_image_path: str
+    h4_image_path: str
+    d1_image_path: str
+    m15_comment: str
+    h1_comment: str
+    h4_comment: str
+    d1_comment: str
