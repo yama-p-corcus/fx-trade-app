@@ -54,6 +54,39 @@ class TradeRepository:
             rows = connection.execute(query, (trade_date,)).fetchall()
         return [self._row_to_trade(row) for row in rows]
 
+    def fetch_by_month(self, year: int, month: int) -> list[Trade]:
+        month_key = f"{year:04d}-{month:02d}"
+        query = """
+            SELECT
+                id,
+                trade_date,
+                trade_time,
+                currency_pair,
+                order_price,
+                settlement_price,
+                lot,
+                pips,
+                trade_type,
+                profit,
+                entry_memo,
+                exit_memo,
+                image_path,
+                m15_image_path,
+                h1_image_path,
+                h4_image_path,
+                d1_image_path,
+                m15_comment,
+                h1_comment,
+                h4_comment,
+                d1_comment
+            FROM trades
+            WHERE substr(trade_date, 1, 7) = ?
+            ORDER BY trade_date ASC, trade_time ASC, id ASC
+        """
+        with get_connection(self.db_path) as connection:
+            rows = connection.execute(query, (month_key,)).fetchall()
+        return [self._row_to_trade(row) for row in rows]
+
     def fetch_by_id(self, trade_id: int) -> Trade | None:
         query = """
             SELECT

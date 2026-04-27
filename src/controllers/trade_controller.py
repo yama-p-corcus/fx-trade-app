@@ -21,6 +21,9 @@ class TradeController:
     def get_trade(self, trade_id: int) -> Trade | None:
         return self.service.get_trade(trade_id)
 
+    def get_dashboard_data(self, year: int, month: int) -> dict[str, Any]:
+        return self.service.get_dashboard_data(year, month)
+
     def create_trade(self, payload: dict[str, Any]) -> int:
         return self.service.create_trade(payload)
 

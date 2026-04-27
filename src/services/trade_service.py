@@ -25,6 +25,67 @@ class TradeService:
     def get_trade(self, trade_id: int) -> Trade | None:
         return self.repository.fetch_by_id(trade_id)
 
+    def get_dashboard_data(self, year: int, month: int) -> dict[str, Any]:
+        trades = self.repository.fetch_by_month(year, month)
+        daily_pips: dict[str, float] = {}
+        wins = 0
+        losses = 0
+        total_profit = 0
+        total_loss_abs = 0
+        table_rows: list[dict[str, Any]] = []
+
+        for trade in trades:
+            daily_pips.setdefault(trade.trade_date, 0.0)
+            daily_pips[trade.trade_date] += trade.pips
+
+            if trade.profit >= 0:
+                wins += 1
+                total_profit += trade.profit
+            else:
+                losses += 1
+                total_loss_abs += abs(trade.profit)
+
+            table_rows.append(
+                {
+                    "id": trade.id,
+                    "date": trade.trade_date,
+                    "time": trade.trade_time,
+                    "currency_pair": trade.currency_pair,
+                    "trade_type": "買い" if trade.trade_type == "buy" else "売り",
+                    "pips": trade.pips,
+                    "profit": trade.profit,
+                }
+            )
+
+        total_count = wins + losses
+        win_rate = round((wins / total_count) * 100, 1) if total_count else 0.0
+        average_profit = round(total_profit / wins, 1) if wins else 0.0
+        average_loss = round(total_loss_abs / losses, 1) if losses else 0.0
+
+        chart_items = [
+            {
+                "label": trade_date[-2:],
+                "value": round(value, 1),
+                "color": "#64b5f6" if value >= 0 else "#ef9a9a",
+            }
+            for trade_date, value in sorted(daily_pips.items())
+        ]
+
+        return {
+            "year": year,
+            "month": month,
+            "chart_items": chart_items,
+            "stats": {
+                "wins": wins,
+                "losses": losses,
+                "win_rate": win_rate,
+                "average_profit": average_profit,
+                "average_loss": average_loss,
+            },
+            "table_rows": table_rows,
+            "total_profit": sum(trade.profit for trade in trades),
+        }
+
     def create_trade(self, payload: dict[str, Any]) -> int:
         trade = self._validate_and_build(payload)
         trade_id = self.repository.insert(trade)

@@ -51,6 +51,8 @@ class MainWindow(QMainWindow):
         self.trade_list_page.edit_requested.connect(self.open_edit_dialog)
         self.trade_list_page.delete_requested.connect(self.delete_trade)
         self.dashboard_page.back_requested.connect(self.show_menu_page)
+        self.dashboard_page.filter_changed.connect(self.refresh_dashboard)
+        self.dashboard_page.trade_requested.connect(self.open_edit_dialog)
 
         self.show_menu_page()
 
@@ -64,6 +66,8 @@ class MainWindow(QMainWindow):
 
     def show_dashboard_page(self) -> None:
         self.stack.setCurrentWidget(self.dashboard_page)
+        year, month = self.dashboard_page.selected_year_month()
+        self.refresh_dashboard(year, month)
 
     def show_trade_list_for_date(self, trade_date: str) -> None:
         self.selected_date = trade_date
@@ -135,3 +139,7 @@ class MainWindow(QMainWindow):
     def _reload_trade_list(self) -> None:
         trades = self.controller.get_trades_by_date(self.selected_date)
         self.trade_list_page.load_trades(self.selected_date, trades)
+
+    def refresh_dashboard(self, year: int, month: int) -> None:
+        payload = self.controller.get_dashboard_data(year, month)
+        self.dashboard_page.set_dashboard_data(payload)

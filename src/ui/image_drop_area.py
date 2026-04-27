@@ -6,6 +6,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap
 from PyQt6.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
+from src.ui.clickable_image_label import ClickableImageLabel
+from src.ui.image_preview_dialog import ImagePreviewDialog
 
 class ImageDropArea(QWidget):
     image_changed = pyqtSignal(str)
@@ -22,7 +24,7 @@ class ImageDropArea(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
-        self.preview_label = QLabel("画像をここへドラッグ＆ドロップ")
+        self.preview_label = ClickableImageLabel("画像をここへドラッグ＆ドロップ")
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setWordWrap(True)
         self.preview_label.setFixedSize(self.PREVIEW_WIDTH, self.PREVIEW_HEIGHT)
@@ -30,6 +32,7 @@ class ImageDropArea(QWidget):
         self.preview_label.setStyleSheet(
             "border: 2px dashed #b8d3c0; border-radius: 12px; background: #f8fcf9; color: #567064;"
         )
+        self.preview_label.clicked.connect(self._open_preview_dialog)
 
         self.help_label = QLabel("対応形式: PNG / JPG / JPEG / BMP")
         self.help_label.setProperty("role", "subtitle")
@@ -86,6 +89,12 @@ class ImageDropArea(QWidget):
         self.preview_label.setText("")
         self.preview_label.setPixmap(scaled)
         self.help_label.setVisible(False)
+
+    def _open_preview_dialog(self) -> None:
+        if not self._image_path or not Path(self._image_path).exists():
+            return
+        dialog = ImagePreviewDialog(self._image_path, self)
+        dialog.exec()
 
     @staticmethod
     def _extract_image_path(event) -> str:
