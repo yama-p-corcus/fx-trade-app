@@ -76,6 +76,20 @@ QTableWidget {
     gridline-color: #e3eee5;
     selection-background-color: #d8efde;
     selection-color: #1e3325;
+    alternate-background-color: #f7fcf8;
+}
+
+QTableWidget::item {
+    padding: 6px;
+}
+
+QTableWidget::item:hover {
+    background-color: #e6f4ea;
+}
+
+QTableWidget::item:selected {
+    background-color: #d8efde;
+    color: #1e3325;
 }
 
 QLabel[role="title"] {

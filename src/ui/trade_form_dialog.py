@@ -103,9 +103,9 @@ class TradeFormDialog(QDialog):
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(12)
 
-        self.order_price_spin = self._create_double_spinbox(decimals=5, maximum=99999999.99999, minimum=0.00001)
+        self.order_price_spin = self._create_double_spinbox(decimals=3, maximum=99999999.999, minimum=0.001)
         self.order_price_spin.setSingleStep(0.001)
-        self.settlement_price_spin = self._create_double_spinbox(decimals=5, maximum=99999999.99999, minimum=0.00001)
+        self.settlement_price_spin = self._create_double_spinbox(decimals=3, maximum=99999999.999, minimum=0.001)
         self.settlement_price_spin.setSingleStep(0.001)
         self.lot_spin = self._create_double_spinbox(decimals=2, maximum=999999.99, minimum=0.01)
         self.lot_spin.setSingleStep(0.01)

@@ -136,13 +136,17 @@ class DashboardPage(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
         self.table.itemDoubleClicked.connect(self._emit_trade_requested)
+        self.table.setAlternatingRowColors(True)
+        self.table.setMouseTracking(True)
+        self.table.viewport().setMouseTracking(True)
+        self.table.setShowGrid(True)
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.table.setMinimumHeight(320)
         self.table.setMaximumHeight(420)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setStretchLastSection(True)
         card_layout.addWidget(self.table)
         layout.addWidget(card)
 
@@ -227,7 +231,6 @@ class DashboardPage(QWidget):
                     item.setData(Qt.ItemDataRole.UserRole, row_data["id"])
                 self.table.setItem(row_index, column, item)
 
-        self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
         self.table.setSortingEnabled(True)
         if rows:

@@ -85,11 +85,14 @@ class TradeListPage(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.itemDoubleClicked.connect(self._emit_edit)
         self.table.setAlternatingRowColors(True)
+        self.table.setMouseTracking(True)
+        self.table.viewport().setMouseTracking(True)
+        self.table.setShowGrid(True)
         self.table.setSizeAdjustPolicy(QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents)
         self.table.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Expanding)
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header.setStretchLastSection(True)
 
         card_layout.addWidget(self.table, alignment=Qt.AlignmentFlag.AlignLeft)
 
@@ -128,9 +131,7 @@ class TradeListPage(QWidget):
                     item.setForeground(QColor("#c62828"))
                 self.table.setItem(row, column, item)
 
-        self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
-        self._update_table_width(card_width_padding=32)
         self._set_action_enabled(bool(trades))
         if trades:
             self.table.selectRow(0)
@@ -163,16 +164,3 @@ class TradeListPage(QWidget):
     @staticmethod
     def _format_decimal(value: float, digits: int) -> str:
         return f"{value:,.{digits}f}"
-
-    def _update_table_width(self, card_width_padding: int = 0) -> None:
-        header = self.table.horizontalHeader()
-        width = header.length()
-        width += self.table.verticalHeader().width()
-        width += self.table.frameWidth() * 2
-        if self.table.verticalScrollBar().isVisible():
-            width += self.table.verticalScrollBar().sizeHint().width()
-        self.table.setMaximumWidth(width + 4)
-        self.table.setMinimumWidth(width + 4)
-        parent_card = self.table.parentWidget()
-        if parent_card is not None:
-            parent_card.setMaximumWidth(width + card_width_padding)
