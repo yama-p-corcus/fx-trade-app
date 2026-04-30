@@ -106,7 +106,8 @@ class TradeListPage(QWidget):
     def load_trades(self, selected_date: str, trades: list[Trade]) -> None:
         self.selected_date = selected_date
         self.title_label.setText(f"{selected_date} のトレード一覧")
-        self.summary_label.setText(f"{len(trades)} 件")
+        total_pips = sum(trade.pips for trade in trades)
+        self.summary_label.setText(f"{len(trades)} 件 / 合計 pips: {self._format_decimal(total_pips, 1)}")
 
         self.table.clearContents()
         self.table.setRowCount(len(trades))

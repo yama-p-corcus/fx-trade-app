@@ -66,8 +66,8 @@ class MainWindow(QMainWindow):
 
     def show_dashboard_page(self) -> None:
         self.stack.setCurrentWidget(self.dashboard_page)
-        year, month = self.dashboard_page.selected_year_month()
-        self.refresh_dashboard(year, month)
+        period, year, month, selected_date = self.dashboard_page.selected_filters()
+        self.refresh_dashboard(period, year, month, selected_date)
 
     def show_trade_list_for_date(self, trade_date: str) -> None:
         self.selected_date = trade_date
@@ -140,6 +140,9 @@ class MainWindow(QMainWindow):
         trades = self.controller.get_trades_by_date(self.selected_date)
         self.trade_list_page.load_trades(self.selected_date, trades)
 
-    def refresh_dashboard(self, year: int, month: int) -> None:
-        payload = self.controller.get_dashboard_data(year, month)
+    def refresh_dashboard(self, period: str, year: int, month: int, selected_date: str) -> None:
+        if period == "week":
+            payload = self.controller.get_weekly_dashboard_data(selected_date)
+        else:
+            payload = self.controller.get_dashboard_data(year, month)
         self.dashboard_page.set_dashboard_data(payload)

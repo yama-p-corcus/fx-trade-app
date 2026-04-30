@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from src.database.connection import get_connection
@@ -7,6 +8,30 @@ from src.models.trade import Trade
 
 
 class TradeRepository:
+    TRADE_SELECT_FIELDS = """
+        id,
+        trade_date,
+        trade_time,
+        currency_pair,
+        order_price,
+        settlement_price,
+        lot,
+        pips,
+        trade_type,
+        profit,
+        entry_memo,
+        exit_memo,
+        image_path,
+        m15_image_path,
+        h1_image_path,
+        h4_image_path,
+        d1_image_path,
+        m15_comment,
+        h1_comment,
+        h4_comment,
+        d1_comment
+    """
+
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
 
@@ -23,94 +48,36 @@ class TradeRepository:
         return {row["trade_date"]: int(row["total_profit"]) for row in rows}
 
     def fetch_by_date(self, trade_date: str) -> list[Trade]:
-        query = """
-            SELECT
-                id,
-                trade_date,
-                trade_time,
-                currency_pair,
-                order_price,
-                settlement_price,
-                lot,
-                pips,
-                trade_type,
-                profit,
-                entry_memo,
-                exit_memo,
-                image_path,
-                m15_image_path,
-                h1_image_path,
-                h4_image_path,
-                d1_image_path,
-                m15_comment,
-                h1_comment,
-                h4_comment,
-                d1_comment
+        query = f"""
+            SELECT {self.TRADE_SELECT_FIELDS}
             FROM trades
             WHERE trade_date = ?
             ORDER BY trade_time DESC, id DESC
         """
-        with get_connection(self.db_path) as connection:
-            rows = connection.execute(query, (trade_date,)).fetchall()
-        return [self._row_to_trade(row) for row in rows]
+        return self._fetch_trades(query, (trade_date,))
 
     def fetch_by_month(self, year: int, month: int) -> list[Trade]:
         month_key = f"{year:04d}-{month:02d}"
-        query = """
-            SELECT
-                id,
-                trade_date,
-                trade_time,
-                currency_pair,
-                order_price,
-                settlement_price,
-                lot,
-                pips,
-                trade_type,
-                profit,
-                entry_memo,
-                exit_memo,
-                image_path,
-                m15_image_path,
-                h1_image_path,
-                h4_image_path,
-                d1_image_path,
-                m15_comment,
-                h1_comment,
-                h4_comment,
-                d1_comment
+        query = f"""
+            SELECT {self.TRADE_SELECT_FIELDS}
             FROM trades
             WHERE substr(trade_date, 1, 7) = ?
             ORDER BY trade_date ASC, trade_time ASC, id ASC
         """
-        with get_connection(self.db_path) as connection:
-            rows = connection.execute(query, (month_key,)).fetchall()
-        return [self._row_to_trade(row) for row in rows]
+        return self._fetch_trades(query, (month_key,))
+
+    def fetch_by_date_range(self, start_date: str, end_date: str) -> list[Trade]:
+        query = f"""
+            SELECT {self.TRADE_SELECT_FIELDS}
+            FROM trades
+            WHERE trade_date BETWEEN ? AND ?
+            ORDER BY trade_date ASC, trade_time ASC, id ASC
+        """
+        return self._fetch_trades(query, (start_date, end_date))
 
     def fetch_by_id(self, trade_id: int) -> Trade | None:
-        query = """
-            SELECT
-                id,
-                trade_date,
-                trade_time,
-                currency_pair,
-                order_price,
-                settlement_price,
-                lot,
-                pips,
-                trade_type,
-                profit,
-                entry_memo,
-                exit_memo,
-                image_path,
-                m15_image_path,
-                h1_image_path,
-                h4_image_path,
-                d1_image_path,
-                m15_comment,
-                h1_comment,
-                h4_comment,
-                d1_comment
+        query = f"""
+            SELECT {self.TRADE_SELECT_FIELDS}
             FROM trades
             WHERE id = ?
         """
@@ -255,6 +222,11 @@ class TradeRepository:
         with get_connection(self.db_path) as connection:
             connection.execute("DELETE FROM trades WHERE id = ?", (trade_id,))
             connection.commit()
+
+    def _fetch_trades(self, query: str, params: tuple) -> list[Trade]:
+        with get_connection(self.db_path) as connection:
+            rows = connection.execute(query, params).fetchall()
+        return [self._row_to_trade(row) for row in rows]
 
     @staticmethod
     def _row_to_trade(row) -> Trade:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,40 @@ class TradeService:
 
     def get_dashboard_data(self, year: int, month: int) -> dict[str, Any]:
         trades = self.repository.fetch_by_month(year, month)
+        return self._build_dashboard_payload(
+            trades=trades,
+            period="month",
+            year=year,
+            month=month,
+            title=f"{year}年{month}月 日別 pips",
+        )
+
+    def get_weekly_dashboard_data(self, selected_date: str) -> dict[str, Any]:
+        target_date = date.fromisoformat(selected_date)
+        start_date = target_date.fromordinal(target_date.toordinal() - target_date.weekday())
+        end_date = start_date.fromordinal(start_date.toordinal() + 6)
+        trades = self.repository.fetch_by_date_range(start_date.isoformat(), end_date.isoformat())
+        return self._build_dashboard_payload(
+            trades=trades,
+            period="week",
+            year=target_date.year,
+            week=target_date.isocalendar().week,
+            title=f"{start_date:%Y-%m-%d} ～ {end_date:%Y-%m-%d}",
+            selected_date=selected_date,
+        )
+
+    def _build_dashboard_payload(
+        self,
+        trades: list[Trade],
+        period: str,
+        year: int,
+        title: str,
+        month: int | None = None,
+        week: int | None = None,
+        selected_date: str | None = None,
+    ) -> dict[str, Any]:
         daily_pips: dict[str, float] = {}
+        daily_profit: dict[str, int] = {}
         wins = 0
         losses = 0
         total_profit = 0
@@ -37,6 +71,8 @@ class TradeService:
         for trade in trades:
             daily_pips.setdefault(trade.trade_date, 0.0)
             daily_pips[trade.trade_date] += trade.pips
+            daily_profit.setdefault(trade.trade_date, 0)
+            daily_profit[trade.trade_date] += trade.profit
 
             if trade.profit >= 0:
                 wins += 1
@@ -62,19 +98,29 @@ class TradeService:
         average_profit = round(total_profit / wins, 1) if wins else 0.0
         average_loss = round(total_loss_abs / losses, 1) if losses else 0.0
 
-        chart_items = [
+        chart_items_pips = [
             {
-                "label": trade_date[-2:],
+                "label": trade_date[-2:] if period == "month" else trade_date[5:],
                 "value": round(value, 1),
                 "color": "#64b5f6" if value >= 0 else "#ef9a9a",
             }
             for trade_date, value in sorted(daily_pips.items())
         ]
+        chart_items_profit = [
+            {
+                "label": trade_date[-2:] if period == "month" else trade_date[5:],
+                "value": value,
+                "color": "#64b5f6" if value >= 0 else "#ef9a9a",
+            }
+            for trade_date, value in sorted(daily_profit.items())
+        ]
 
-        return {
+        payload = {
+            "period": period,
             "year": year,
-            "month": month,
-            "chart_items": chart_items,
+            "title": title,
+            "chart_items_pips": chart_items_pips,
+            "chart_items_profit": chart_items_profit,
             "stats": {
                 "wins": wins,
                 "losses": losses,
@@ -85,6 +131,13 @@ class TradeService:
             "table_rows": table_rows,
             "total_profit": sum(trade.profit for trade in trades),
         }
+        if month is not None:
+            payload["month"] = month
+        if week is not None:
+            payload["week"] = week
+        if selected_date is not None:
+            payload["selected_date"] = selected_date
+        return payload
 
     def create_trade(self, payload: dict[str, Any]) -> int:
         trade = self._validate_and_build(payload)

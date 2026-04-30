@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from matplotlib.ticker import FuncFormatter
 from PyQt6.QtCore import QDate, Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
+    QDateEdit,
     QFrame,
     QGridLayout,
     QHeaderView,
@@ -22,18 +25,24 @@ from PyQt6.QtWidgets import (
 try:
     from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
     from matplotlib.figure import Figure
+    import matplotlib.pyplot as plt
 except ModuleNotFoundError:
     FigureCanvasQTAgg = None
     Figure = None
+    plt = None
 
 
 class DashboardPage(QWidget):
+    _matplotlib_font_configured = False
+
     back_requested = pyqtSignal()
-    filter_changed = pyqtSignal(int, int)
+    filter_changed = pyqtSignal(str, int, int, str)
     trade_requested = pyqtSignal(int)
 
     def __init__(self) -> None:
         super().__init__()
+        self.current_chart_metric = "pips"
+        self.current_payload: dict = {}
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
@@ -60,19 +69,33 @@ class DashboardPage(QWidget):
         controls_layout.addStretch()
 
         today = QDate.currentDate()
+        self.period_combo = QComboBox()
+        self.period_combo.addItem("月次", "month")
+        self.period_combo.addItem("週次", "week")
+        self.period_combo.currentIndexChanged.connect(self._sync_period_controls)
         self.year_spin = QSpinBox()
         self.year_spin.setRange(2000, 2100)
         self.year_spin.setValue(today.year())
         self.month_spin = QSpinBox()
         self.month_spin.setRange(1, 12)
         self.month_spin.setValue(today.month())
+        self.week_date_edit = QDateEdit()
+        self.week_date_edit.setCalendarPopup(True)
+        self.week_date_edit.setDisplayFormat("yyyy-MM-dd")
+        self.week_date_edit.setDate(today)
         refresh_button = QPushButton("表示更新")
         refresh_button.clicked.connect(self._emit_filter_changed)
 
+        controls_layout.addWidget(QLabel("期間"))
+        controls_layout.addWidget(self.period_combo)
         controls_layout.addWidget(QLabel("年"))
         controls_layout.addWidget(self.year_spin)
-        controls_layout.addWidget(QLabel("月"))
+        self.month_label = QLabel("月")
+        controls_layout.addWidget(self.month_label)
         controls_layout.addWidget(self.month_spin)
+        self.week_label = QLabel("基準日")
+        controls_layout.addWidget(self.week_label)
+        controls_layout.addWidget(self.week_date_edit)
         controls_layout.addWidget(refresh_button)
         layout.addLayout(controls_layout)
 
@@ -91,10 +114,19 @@ class DashboardPage(QWidget):
         self.chart_title.setProperty("role", "subtitle")
         card_layout.addWidget(self.chart_title)
 
+        chart_toggle_layout = QHBoxLayout()
+        chart_toggle_layout.addStretch()
+        self.chart_toggle_button = QPushButton("損益表示へ切替")
+        self.chart_toggle_button.setProperty("variant", "secondary")
+        self.chart_toggle_button.clicked.connect(self._toggle_chart_metric)
+        chart_toggle_layout.addWidget(self.chart_toggle_button)
+        card_layout.addLayout(chart_toggle_layout)
+
         self.chart_notice = QLabel("")
         self.chart_notice.setWordWrap(True)
         self.chart_notice.setProperty("role", "subtitle")
 
+        self._configure_matplotlib_font()
         self.figure = Figure(figsize=(8, 3.5)) if Figure else None
         self.canvas = FigureCanvasQTAgg(self.figure) if FigureCanvasQTAgg and self.figure else None
         if self.canvas:
@@ -152,11 +184,11 @@ class DashboardPage(QWidget):
 
         self._draw_chart([])
         self._populate_table([])
+        self._sync_period_controls()
 
     def set_dashboard_data(self, payload: dict) -> None:
-        chart_items = payload.get("chart_items", [])
-        self.chart_title.setText(f"{payload['year']}年{payload['month']}月 日別 pips")
-        self._draw_chart(chart_items)
+        self.current_payload = payload
+        self._refresh_chart()
 
         stats = payload.get("stats", {})
         self.stat_labels["wins"].setText(f"{stats.get('wins', 0):,}")
@@ -169,11 +201,21 @@ class DashboardPage(QWidget):
         self.total_profit_label.setStyleSheet(f"color: {'#1565c0' if total_profit >= 0 else '#c62828'};")
         self._populate_table(payload.get("table_rows", []))
 
-    def selected_year_month(self) -> tuple[int, int]:
-        return self.year_spin.value(), self.month_spin.value()
+    def selected_filters(self) -> tuple[str, int, int, str]:
+        return (
+            self.period_combo.currentData(),
+            self.year_spin.value(),
+            self.month_spin.value(),
+            self.week_date_edit.date().toString("yyyy-MM-dd"),
+        )
 
     def _emit_filter_changed(self) -> None:
-        self.filter_changed.emit(self.year_spin.value(), self.month_spin.value())
+        self.filter_changed.emit(
+            self.period_combo.currentData(),
+            self.year_spin.value(),
+            self.month_spin.value(),
+            self.week_date_edit.date().toString("yyyy-MM-dd"),
+        )
 
     def _draw_chart(self, chart_items: list[dict]) -> None:
         if not self.figure or not self.canvas:
@@ -191,7 +233,7 @@ class DashboardPage(QWidget):
             ax.text(0.5, 0.5, "データがありません", ha="center", va="center", transform=ax.transAxes)
             ax.set_xticks([])
 
-        ax.set_ylabel("pips")
+        ax.set_ylabel("pips" if self.current_chart_metric == "pips" else "損益")
         ax.set_facecolor("#ffffff")
         self.figure.patch.set_facecolor("#ffffff")
         ax.spines["top"].set_visible(False)
@@ -199,8 +241,26 @@ class DashboardPage(QWidget):
         ax.spines["left"].set_color("#cddfcf")
         ax.spines["bottom"].set_color("#cddfcf")
         ax.tick_params(colors="#365244")
+        if self.current_chart_metric == "profit":
+            ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _pos: f"{int(value):,}"))
         self.figure.tight_layout()
         self.canvas.draw()
+
+    def _refresh_chart(self) -> None:
+        payload = self.current_payload or {}
+        if self.current_chart_metric == "pips":
+            self.chart_title.setText(f"{payload.get('title', '')} - 獲得 pips")
+            self.chart_toggle_button.setText("損益表示へ切替")
+            chart_items = payload.get("chart_items_pips", [])
+        else:
+            self.chart_title.setText(f"{payload.get('title', '')} - 損益")
+            self.chart_toggle_button.setText("pips表示へ切替")
+            chart_items = payload.get("chart_items_profit", [])
+        self._draw_chart(chart_items)
+
+    def _toggle_chart_metric(self) -> None:
+        self.current_chart_metric = "profit" if self.current_chart_metric == "pips" else "pips"
+        self._refresh_chart()
 
     def _populate_table(self, rows: list[dict]) -> None:
         self.table.setSortingEnabled(False)
@@ -240,6 +300,21 @@ class DashboardPage(QWidget):
         trade_id = self.table.item(item.row(), 0).data(Qt.ItemDataRole.UserRole)
         if trade_id is not None:
             self.trade_requested.emit(int(trade_id))
+
+    @classmethod
+    def _configure_matplotlib_font(cls) -> None:
+        if cls._matplotlib_font_configured or plt is None:
+            return
+        plt.rcParams["font.family"] = ["Meiryo", "Yu Gothic", "MS Gothic", "sans-serif"]
+        plt.rcParams["axes.unicode_minus"] = False
+        cls._matplotlib_font_configured = True
+
+    def _sync_period_controls(self) -> None:
+        is_month = self.period_combo.currentData() == "month"
+        self.month_label.setVisible(is_month)
+        self.month_spin.setVisible(is_month)
+        self.week_label.setVisible(not is_month)
+        self.week_date_edit.setVisible(not is_month)
 
     @staticmethod
     def _create_stat_card(grid: QGridLayout, row: int, column: int, title: str) -> QLabel:

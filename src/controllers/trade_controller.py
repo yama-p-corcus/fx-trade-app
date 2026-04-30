@@ -24,6 +24,9 @@ class TradeController:
     def get_dashboard_data(self, year: int, month: int) -> dict[str, Any]:
         return self.service.get_dashboard_data(year, month)
 
+    def get_weekly_dashboard_data(self, selected_date: str) -> dict[str, Any]:
+        return self.service.get_weekly_dashboard_data(selected_date)
+
     def create_trade(self, payload: dict[str, Any]) -> int:
         return self.service.create_trade(payload)
 
